@@ -10,13 +10,14 @@
 define('ARCHIVE_LIB',dirname(__FILE__).'/archiveLib/');
 define('PCLZIP_TEMPORARY_DIR',TEMP_PATH);
 define('PCLTAR_TEMPORARY_DIR',TEMP_PATH);
+define('PCLZIP_SEPARATOR',';@@@,');//压缩多个文件，组成字符串分割
 mk_dir(TEMP_PATH);
 
-require ARCHIVE_LIB.'pclerror.lib.php';
-require ARCHIVE_LIB.'pcltrace.lib.php';
-require ARCHIVE_LIB.'pcltar.lib.php';
-require ARCHIVE_LIB.'pclzip.class.php';
-require ARCHIVE_LIB.'kodRarArchive.class.php';
+require_once ARCHIVE_LIB.'pclerror.lib.php';
+require_once ARCHIVE_LIB.'pcltrace.lib.php';
+require_once ARCHIVE_LIB.'pcltar.lib.php';
+require_once ARCHIVE_LIB.'pclzip.class.php';
+require_once ARCHIVE_LIB.'kodRarArchive.class.php';
 
 
 class KodArchive {
@@ -93,10 +94,11 @@ class KodArchive {
 		if($result){
 			//编码转换
 			$charset = unzip_charset_get($result);
-			$output  = $output && $charset != 'utf-8' && function_exists('iconv');
+			$output  = $output && function_exists('iconv');
 			for ($i=0; $i < count($result); $i++) {
 				//不允许相对路径
 				$result[$i]['filename'] = str_replace(array('../','..\\'),"_",$result[$i]['filename']);
+				$charset = get_charset($result[$i]['filename']);
 				if($output){
 					$result[$i]['filename'] = iconv_to($result[$i]['filename'],$charset,'utf-8');
 					unset($result[$i]['stored_filename']);
@@ -163,7 +165,7 @@ class KodArchive {
 			}
 			//TrDisplay();exit;
 			return array('code'=>$result,'data'=>PclErrorString(true));
-		}else if( self::checkIfType($ext,'rar') ){
+		}else if( self::checkIfType($ext,'rar')){ // || $ext == 'zip' 
 			return kodRarArchive::extract($file,$dest,$ext,$partName);
 		}else{
 			$zip = new PclZip($file);

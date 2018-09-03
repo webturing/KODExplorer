@@ -54,9 +54,14 @@ class pluginModel{
 
 	public function checkAuth($app){
 		$pluginList = $this->loadData();
-		if( !isset($pluginList[$app]) || !$pluginList[$app]['status']){
+		if( !isset($pluginList[$app]) || 
+			!$pluginList[$app]['status']){
 			show_tips("Not exist or disabled!");
 		}
+		if( !isset($pluginList[$app]['config']['pluginAuth']) ){
+			return true;
+		}
+
 		$auth = $pluginList[$app]['config']['pluginAuth'];
 		if(plugin_check_auth($app,$auth)){
 			return true;
@@ -94,8 +99,10 @@ class pluginModel{
 		$pluginList = &$this->config['settingSystem']['pluginList'];
 		if(is_array($pluginList[$app])){
 			if($open){
+				$config  = $this->getConfig($app);
+				$default = $this->getConfigDefault($app);
+				$config  = array_merge($default,$config);//保存初始配置;兼容新增默认配置
 				Hook::apply($app.'Plugin.regiest');
-				$config = $this->getConfig($app,true);
 				$this->setConfig($app,$config);
 			}
 			$pluginList[$app]['status'] = $open;
@@ -120,18 +127,17 @@ class pluginModel{
 		return $result;
 	}
 
-
 	public function getPackageJson($app){
 		return Hook::apply($app.'Plugin.appPackage');
 	}
-	public function getConfig($app,$force = false){
+	public function getConfig($app){
 		$result = array();
 		$pluginList = &$this->config['settingSystem']['pluginList'];
 		if( isset($pluginList[$app]) && 
 			is_array($pluginList[$app]['config']) ){
 			$result = $pluginList[$app]['config'];
 		}
-		if(!$result  || $force){
+		if(!$result){
 			$result = $this->getConfigDefault($app);
 		}
 		return $result;

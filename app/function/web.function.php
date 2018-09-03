@@ -41,13 +41,29 @@ function get_url_link($url){
 	$port = (empty($res["port"]) || $res["port"] == '80')?'':':'.$res["port"];
 	return $res['scheme']."://".$res["host"].$port.$res['path'];
 }
+function get_url_root($url){
+	if(!$url) return "";
+	$res = parse_url($url);
+	$port = (empty($res["port"]) || $res["port"] == '80')?'':':'.$res["port"];
+	return $res['scheme']."://".$res["host"].$port.'/';
+}
 function get_url_domain($url){
 	if(!$url) return "";
 	$res = parse_url($url);
 	return $res["host"];
 }
+function get_url_scheme($url){
+	if(!$url) return "";
+	$res = parse_url($url);
+	return $res['scheme'];
+}
 
 function get_host() {
+	//兼容子目录反向代理:只能是前端js通过cookie传入到后端进行处理
+	if(defined('GLOBAL_DEBUG') && isset($_COOKIE['HOST']) && isset($_COOKIE['APP_HOST'])){
+		return $_COOKIE['HOST'];
+	}
+
 	$protocol = (!empty($_SERVER['HTTPS'])
 				 && $_SERVER['HTTPS'] !== 'off'
 				 || $_SERVER['SERVER_PORT'] === 443) ? 'https://' : 'http://';
@@ -63,26 +79,26 @@ function get_host() {
 }
 // current request url
 function this_url(){
-	$url = get_host().$_SERVER['REQUEST_URI'];
+	$url = rtrim(get_host(),'/').'/'.ltrim($_SERVER['REQUEST_URI'],'/');
 	return $url;
 }
-function reset_path($str){
-	return str_replace('\\','/',$str);
-}
-function get_webroot($app_path=''){
-	$index='index.php';
-	$self_file  = reset_path($_SERVER['SCRIPT_NAME']);
-	if($app_path == ''){
-		$index_path = reset_path($_SERVER['SCRIPT_FILENAME']);
-		$app_path = substr($index_path,0,strrpos($index_path,'/'));
-		$index = substr($index_path,1+strrpos($index_path,'/'));
+
+//解决部分主机不兼容问题
+function webroot_path($basic_path){
+	$webRoot = str_replace($_SERVER['SCRIPT_NAME'],'',$_SERVER['SCRIPT_FILENAME']);
+	$webRoot = rtrim(str_replace(array('\\','\/\/','\\\\'),'/',$webRoot),'/').'/';
+	if( substr($basic_path,0,strlen($webRoot)) == $webRoot ){
+		return $webRoot;
 	}
-	$webRoot = str_replace($self_file,'',$app_path.$index).'/';
-	if (substr($webRoot,-(strlen($index)+1)) == $index.'/') {//解决部分主机不兼容问题
-		$webRoot = reset_path($_SERVER['DOCUMENT_ROOT']).'/';
+
+	$webRoot = $_SERVER['DOCUMENT_ROOT'];
+	$webRoot = rtrim(str_replace(array('\\','\/\/','\\\\'),'/',$webRoot),'/').'/';
+	if( substr($basic_path,0,strlen($webRoot)) == $webRoot ){
+		return $webRoot;
 	}
-	return $webRoot;
+	return $basic_path;
 }
+
 function ua_has($str){
 	if(!isset($_SERVER['HTTP_USER_AGENT'])){
 		return false;
@@ -96,7 +112,7 @@ function is_wap(){
 	if(!isset($_SERVER['HTTP_USER_AGENT'])){
 		return false;
 	} 
-	if(preg_match('/(up.browser|up.link|mmp|symbian|smartphone|midp|wap|phone|iphone|ipad|ipod|android|xoom)/i', 
+	if(preg_match('/(up.browser|up.link|mmp|symbian|smartphone|midp|wap|phone|iphone|ipad|ipod|android|xoom|miui)/i', 
 		strtolower($_SERVER['HTTP_USER_AGENT']))){
 		return true;
 	}
@@ -266,6 +282,12 @@ function curl_progress_get($file,$uuid=''){
 // http://blog.csdn.net/havedream_one/article/details/52585331 
 // php7.1 curl上传中文路径文件失败问题？【暂时通过重命名方式解决】
 function url_request($url,$method='GET',$data=false,$headers=false,$options=false,$json=false,$timeout=3600){
+	if(!$url){
+		return array(
+			'data'		=> 'url error! url='.$url,
+			'code'		=> 0
+		);
+	}
 	ignore_timeout();
 	$ch = curl_init();
 	$upload = false;
@@ -312,11 +334,19 @@ function url_request($url,$method='GET',$data=false,$headers=false,$options=fals
 
 	// post数组或拼接的参数；不同方式服务器兼容性有所差异
 	// http://blog.csdn.net/havedream_one/article/details/52585331 
-	if ($data && is_array($headers) && $method != 'DOWNLOAD' &&
-		in_array('Content-Type: application/x-www-form-urlencoded',$headers)) {
-		$data = http_build_query($data);
+	// post默认用array发送;content-type为x-www-form-urlencoded时用key=1&key=2的形式
+	if (is_array($data) && is_array($headers) && $method != 'DOWNLOAD'){
+		foreach ($headers as $key) {
+			if(strstr($key,'x-www-form-urlencoded')){
+				$data = http_build_query($data);
+				break;
+			}
+		}
 	}
 	if($method == 'GET' && $data){
+		if(is_array($data)){
+			$data = http_build_query($data);
+		}
 		if(strstr($url,'?')){
 			$url = $url.'&'.$data;
 		}else{
@@ -327,6 +357,7 @@ function url_request($url,$method='GET',$data=false,$headers=false,$options=fals
 	curl_setopt($ch, CURLOPT_HEADER,1);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+	curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
 	curl_setopt($ch, CURLINFO_HEADER_OUT, 1);
 	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
 	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
@@ -429,7 +460,10 @@ function url_request($url,$method='GET',$data=false,$headers=false,$options=fals
 	);
 	return $return;
 }
-
+function curl_get_contents($url){
+	$data = url_request($url);
+	return $data['data'];
+}
 
 function get_headers_curl($url,$timeout=30,$depth=0,&$headers=array()){
 	if(!function_exists('curl_init')){
@@ -635,7 +669,7 @@ function stripslashes_deep($value){
 }
 
 function parse_url_route(){
-	$param = str_replace($_SERVER['SCRIPT_NAME'],"",$_SERVER['PHP_SELF']);
+	$param = str_replace($_SERVER['SCRIPT_NAME'],"",$_SERVER['SCRIPT_NAME']);
 	if($param && substr($param,0,1) == '/'){
 		$arr = explode('&',$param);
 		$arr[0] = ltrim($arr[0],'/');

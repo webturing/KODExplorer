@@ -20,6 +20,10 @@ class app extends Controller{
 	}
 
 	public function initApp(){
+		//为空则不初始化桌面
+		if(!$this->config['settingSystem']['desktopFolder']){
+			return;
+		}
 		$list = $this->sql->get();
 		$newUserApp = $this->config['settingSystem']['newUserApp'];
 		$default = explode(',',$newUserApp);
@@ -114,7 +118,7 @@ class app extends Controller{
 	}
 
 	public function getUrlTitle(){
-		$html = url_request($this->in['url']);
+		$html = curl_get_contents($this->in['url']);
 		$result = match($html,"<title>(.*)<\/title>");
 		if (strlen($result)>50) {
 			$result = mb_substr($result,0,50,'utf-8');

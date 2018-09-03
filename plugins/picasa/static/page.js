@@ -1,8 +1,13 @@
 define(function(require, exports) {
-	var imageUrl = function(path){
+	var imageUrl = function(path,trueImage){
 		if(path.substr(0,4) == 'http'){
 			return path;
 		}
+		//gif 预览
+		if(trueImage || core.pathExt(path) == 'gif'){
+			return core.path2url(path);
+		}
+		
 		var imageThumb = G.appHost+'explorer/image';
 		if(G.sid){
 			imageThumb = G.appHost+'share/image&user='+G.user+'&sid='+G.sid;
@@ -33,7 +38,7 @@ define(function(require, exports) {
 					fileNum ++;
 					items.push([
 						[imageUrl(thePath),imageUrl(thePath),thePath],
-						core.pathThis(thePath),[0,0],''
+						core.pathThis(thePath),[0,0],'',imageUrl(thePath,true)
 					]);
 				});
 			}else{
@@ -48,7 +53,7 @@ define(function(require, exports) {
 					}
 					items.push([
 						[thumb,imageUrl(thePath),thePath],
-						core.pathThis(thePath),[0,0],''
+						core.pathThis(thePath),[0,0],'',imageUrl(thePath,true)
 					]);
 				});
 			}
@@ -108,7 +113,6 @@ define(function(require, exports) {
 	var loadImageBefore = function(){
 	    var index = parseInt($('#PV_Control #PV_Items .current').attr('number'));
 		var path = myPicasa.arrItems[index][0][2];
-
 		if(path.substr(0,4) == 'http'){
 		    $("#PV_rotate_Left,#PV_rotate_Right,#PV_Btn_Remove").addClass('hidden');
 		}else{

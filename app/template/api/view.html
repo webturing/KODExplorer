@@ -49,13 +49,16 @@
 
 <body>
 	<div class="full-background"></div>
-	<div class="init-loading"><div><img src="<?php echo STATIC_PATH;?>images/common/loading_simple.gif"/></div></div>
+	<div class="init-loading"><div><img src="<?php echo STATIC_PATH;?>images/common/loading_simple.gif?v=<?php echo KOD_VERSION;?>"/></div></div>
 	<div class="frame-main">
 		<div class="bindary-box hidden">
 			<div class="title"><div class="ico"></div></div>
 			<div class="content-info">
 				<div class="name"></div>
 				<div class="size"><span></span><i class="share-time"></i></div>
+				<div class="btn-group">
+					<a type="button" class="btn btn-primary btn-download" href=""><?php echo LNG('download');?></a>
+				</div>
 				<div class="error-tips"><?php echo LNG('share_error_show_tips');?></div>
 			</div>
 		</div>

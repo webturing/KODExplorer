@@ -2,7 +2,7 @@
 	"id":"adminer",
 	"name":"Adminer",
 	"title":"{{LNG.Adminer.meta.title}}",
-	"version":"4.31",
+	"version":"4.63",
 	"source":{
 		"thumb":"",
 		"className":"font-icon icon-bar-chart bg-blue-7",
@@ -16,6 +16,13 @@
 		"homePage":"https://www.adminer.org"
 	},
 	"configItem":{
+		"pluginAuth":{
+			"type":"userSelect",
+			"value":"role:1",
+			"display":"{{LNG.Plugin.config.auth}}",
+			"desc":"{{LNG.Plugin.config.authDesc}}",
+			"require":1
+		},
 		"menuSubMenu":{
 			"type":"switch",
 			"value":1,

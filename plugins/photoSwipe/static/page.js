@@ -1,8 +1,13 @@
 define(function(require, exports) {
-	var imageUrl = function(path){
+	var imageUrl = function(path,trueImage){
 	    if(path.substr(0,4) == 'http'){
 			return path;
 		}
+		//gif 预览
+		if(trueImage || core.pathExt(path) == 'gif'){
+			return core.path2url(path);
+		}
+		
 		var imageThumb = G.appHost+'explorer/image';
 		if(G.sid){
 			imageThumb = G.appHost+'share/image&user='+G.user+'&sid='+G.sid;
@@ -28,6 +33,7 @@ define(function(require, exports) {
 			itemsArr.push({
 				src:link,
 				msrc:msrc,
+				trueImage:imageUrl(path,true),
 				title:core.pathThis(urlDecode(path)),
 				w:width,h:height,
 				$dom:$dom?$dom:false
@@ -91,28 +97,6 @@ define(function(require, exports) {
 		return {items:itemsArr,index:index};
 	}
 
-	var options = {
-		history: false,
-		focus: true,
-		index: 0,
-		bgOpacity:0.8,
-		maxSpreadZoom:5,
-		closeOnScroll:false,
-		shareEl: false,
-
-		showHideOpacity:false,
-		showAnimationDuration: 300,
-		hideAnimationDuration: 300,
-		getThumbBoundsFn: function(index) {
-			var item = itemsArr[index];
-			if(!item || !item.$dom || item.$dom.length == 0){//目录切换后没有原图
-				return {x:$(window).width()/2,y:$(window).height()/2,w:1,h:1};
-			}
-			var pageYScroll = window.pageYOffset || document.documentElement.scrollTop; 
-			var rect = $(item.$dom).get(0).getBoundingClientRect();
-			return {x:rect.left,y:rect.top + pageYScroll,w:rect.width,h:rect.height};
-		}
-	};
 
 	//http://dimsemenov.com/plugins/royal-slider/gallery/
 	//http://photoswipe.com/documentation/faq.html
@@ -131,6 +115,42 @@ define(function(require, exports) {
 			if($('.pswp').hasClass('pswp--open')){//已经打开
 				return;
 			}
+
+			var options = {
+				// history: false,
+				focus: true,
+				index: 0,
+				bgOpacity:0.8,
+				maxSpreadZoom:5,
+				closeOnScroll:false,
+		
+				shareEl: true,
+				shareButtons: [
+					//{id:'facebook', label:'Facebook', url:'https://www.facebook.com/sharer/sharer.php?u={{url}}'},
+					{id:'open', label:"查看原图", url:'{{raw_image_url}}', download:false},
+					{id:'download', label:LNG.download, url:'{{raw_image_url}}', download:true}
+				],
+				getImageURLForShare: function( shareButtonData ) {
+					return gallery.currItem.trueImage || '';
+				},
+				showHideOpacity:false,
+				showAnimationDuration: 300,
+				hideAnimationDuration: 300,
+				fullscreenEl : true,				
+		
+				// captionEl : false,		
+				// tapToClose : false,
+				// tapToToggleControls : true,
+				getThumbBoundsFn: function(index) {
+					var item = itemsArr[index];
+					if(!item || !item.$dom || item.$dom.length == 0){//目录切换后没有原图
+						return {x:$(window).width()/2,y:$(window).height()/2,w:1,h:1};
+					}
+					var pageYScroll = window.pageYOffset || document.documentElement.scrollTop; 
+					var rect = $(item.$dom).get(0).getBoundingClientRect();
+					return {x:rect.left,y:rect.top + pageYScroll,w:rect.width,h:rect.height};
+				}
+			};
 
 			var image = getImageArr(imagePath);
 			options.index = image.index;
