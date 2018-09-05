@@ -173,24 +173,14 @@ class systemMember extends Controller{
 		if(isset($groupInfo[$groupID])){
 			return $groupInfo[$groupID];
 		}
-
-		$role = false;
-		$plist = array();
 		foreach ($groupInfo as $key => $value) {//
 			$group = systemGroup::getInfo($key);//测试组，是否在用户所在组的子组
 			$arr = explode(',',$group['children']);
 			if (in_array($groupID,$arr)) {
-				//return $groupInfo[$key];	// 找到最近的父级部门,而非第一个
-				if(empty($plist)){
-					$plist = $arr;
-					$role = $groupInfo[$key];
-				}else if(in_array($group['groupID'], $plist)){
-					$plist = $arr;
-					$role = $groupInfo[$key];
-				}
+				return $groupInfo[$key];
 			}
 		}
-		return $role;
+		return false;
 	}
 
 	//删除 path id
@@ -245,9 +235,9 @@ class systemMember extends Controller{
 			!isset($this->in['groupInfo']) || //{"0":"read","100":"read"}
 			!isset($this->in['sizeMax'])
 			){
+			
 			show_json(LNG('data_not_full'),false);
 		}
-
 		$name = trim(rawurldecode($this->in['name']));
 		$password = rawurldecode($this->in['password']);
 		$groupInfo = json_decode(rawurldecode($this->in['groupInfo']),true);		
@@ -337,7 +327,109 @@ class systemMember extends Controller{
 			show_json($msg,false,implode("\n",$errorArr));
 		}
 	}
+	/**
+	 * 用户添加
+	 * systemMember/add&name=warlee&password=123&sizeMax=0&groupInfo={"0":"read","10":"write"}&role=default
+	 */
+	public function add1($user = false){
+		if (!isset($this->in['name']) || //必填项
+			!isset($this->in['password']) ||
+			!isset($this->in['role']) ||
+			!isset($this->in['groupInfo']) || //{"0":"read","100":"read"}
+			!isset($this->in['sizeMax'])
+			){
+			
+			show_json(LNG('data_not_full'),false);
+		}
+		$name = trim(rawurldecode($this->in['name']));
+		$password = rawurldecode($this->in['password']);
+		$groupInfo = json_decode(rawurldecode($this->in['groupInfo']),true);		
+		if(!is_array($groupInfo)){
+			show_json(LNG('systemMember_group_error'),false);
+		}
+		if($this->sql->get(array('name',$name))){
+			show_json(LNG('error_repeat'),false,$name);
+		}
 
+		//非系统管理员，不能添加系统管理员
+		if(!$GLOBALS['isRoot'] && $this->in['role']=='1'){
+			show_json(LNG('group_role_error'),false);
+		}
+
+		$userArray = array();
+		if(isset($this->in['isImport'])){
+			$arr = explode("\n",$name);
+			foreach($arr as $v){
+				if(trim($v)!=''){
+					$userArray[] = trim($v);
+				}
+			}
+		}else{
+			$userArray[] = $name;
+		}
+		$nickName = $name;
+		if(isset($this->in['nickName'])){
+			$nickName = trim(rawurldecode($this->in['nickName']));
+		}
+
+
+		//批量添加
+		$errorArr = array();
+		foreach ($userArray as $val) {
+			if($this->sql->get('name',$val)){//已存在
+				$errorArr[] = $val;
+				continue;
+			}
+			$userID = $this->sql->getMaxId().'';
+			$userInfo = array(
+				'userID'	=>  $userID,
+				'name'      =>  $val,
+				'nickName'	=>  $nickName,
+				'password'  =>  md5($password),
+				'role'      =>  $this->in['role'],
+				'config'    =>  array('sizeMax' => floatval($this->in['sizeMax']),//M
+									  'sizeUse' => 1024*1024),//总大小，目前使用大小
+				'groupInfo' =>  $groupInfo,
+				'path'      =>  make_path($val),
+				'status'    =>  1,  //0禁用；1启用
+				'lastLogin'	=>  '', //最后登录时间 首次登陆则激活
+				'createTime'=> time(),
+			);
+
+			if(file_exists(iconv_system(USER_PATH.$userInfo['path'])) ){
+				$userInfo['path'] = $userInfo['path'].'_'.$userInfo['userID'];
+			}
+			//用户组目录
+    		if( isset($this->in['homePath'])){
+    			$homePath = _DIR(rawurldecode($this->in['homePath']));
+    			if(file_exists($homePath)){
+    				$userInfo['homePath'] = iconv_app($homePath);
+    			}
+    		}else{
+    			unset($userInfo['homePath']);
+    		}
+			if ($this->sql->set($userID,$userInfo)) {
+				$this->initDir($userInfo['path']);
+			}else{
+				$errorArr[] = $val;
+			}
+		}
+
+		$success = count($userArray)-count($errorArr);
+		$msg = LNG('success');
+		if(count($errorArr) > 0 ){
+			$msg = LNG('word_success').' : '.$success.',  ';//部分失败
+			if($success == 0 ){
+				$msg = LNG('error_repeat');
+			}
+			$msg .= LNG('word_error').' : '.count($errorArr);
+		}
+		if($success==count($userArray)){
+			show_json($msg,true,$success);
+		}else{
+			show_json($msg,false,implode("\n",$errorArr));
+		}
+	}
 	/**
 	 * 编辑 systemMember/edit&userID=101&name=warlee&password=123&sizeMax=0
 	 * &groupInfo={%220%22:%22read%22,%22100%22:%22read%22}&role=default
