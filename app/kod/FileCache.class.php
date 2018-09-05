@@ -171,7 +171,7 @@ class FileCache{
 
 		$str = file_read_safe($file,10.5);
 		if( $str === false || $str === 0 || $str === -1){
-			echo('[Error Code:1010] FileCache load error!'.$file);exit;
+			show_tips('[Error Code:1011] FileCache data error!'.$file);
 		}
 
 		if (strlen($str) == 0 || 

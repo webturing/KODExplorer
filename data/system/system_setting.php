@@ -14,7 +14,7 @@
     "rootListUser": 0,
     "rootListGroup": 0,
     "csrfProtect": 0,
-    "currentVersion": "4.33",
+    "currentVersion": "4.35",
     "menu": [
         {
             "name": "desktop",
@@ -128,9 +128,7 @@
                 "user.commonJs.insert": "toolsCommonPlugin.echoJs"
             },
             "status": 1,
-            "config": [
-
-            ]
+            "config": []
         },
         "VLCPlayer": {
             "id": "VLCPlayer",
